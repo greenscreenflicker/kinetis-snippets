@@ -1,0 +1,25 @@
+uart-dma.elf  :
+section              size        addr
+.interrupts          1040           0
+.text                6076        1040
+.ARM.exidx              8        7116
+.mtb                    0   536805376
+.interrupts_ram         0   536805376
+.data                 108   536805376
+.bss                   84   536805484
+.heap               32768   536805568
+.stack              98112   536838336
+.bitband          2097152   570425344
+.ARM.attributes        48           0
+.comment              110           0
+.debug_info          9234           0
+.debug_abbrev        2622           0
+.debug_aranges        688           0
+.debug_ranges         544           0
+.debug_macro        45697           0
+.debug_line          6145           0
+.debug_str         265745           0
+.debug_frame         3032           0
+Total             2569213
+
+

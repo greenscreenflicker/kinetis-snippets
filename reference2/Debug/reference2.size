@@ -1,0 +1,25 @@
+reference2.elf  :
+section              size        addr
+.interrupts          1040           0
+.text                2368        1040
+.ARM.exidx              8        3408
+.mtb                    0   536805376
+.interrupts_ram         0   536805376
+.data                 104   536805376
+.bss                   28   536805480
+.heap               32768   536805508
+.stack              98172   536838276
+.bitband          2097152   570425344
+.ARM.attributes        48           0
+.comment              110           0
+.debug_info          8490           0
+.debug_abbrev        2558           0
+.debug_aranges        632           0
+.debug_ranges         472           0
+.debug_macro        45969           0
+.debug_line          6337           0
+.debug_str         265069           0
+.debug_frame         2012           0
+Total             2563337
+
+

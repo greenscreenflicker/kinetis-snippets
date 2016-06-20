@@ -1,0 +1,25 @@
+TIMER_FLEX0.elf  :
+section              size        addr
+.interrupts          1040           0
+.text                2984        1040
+.ARM.exidx              8        4024
+.mtb                    0   536805376
+.interrupts_ram         0   536805376
+.data                 104   536805376
+.bss                   28   536805480
+.heap               32768   536805508
+.stack              98172   536838276
+.bitband          2097152   570425344
+.ARM.attributes        48           0
+.comment              110           0
+.debug_info          9999           0
+.debug_abbrev        2689           0
+.debug_aranges        656           0
+.debug_ranges         496           0
+.debug_macro        45725           0
+.debug_line          6234           0
+.debug_str         265267           0
+.debug_frame         2100           0
+Total             2565580
+
+
