@@ -1,0 +1,10 @@
+12. Aug 2016: Added
++Si8900 manual interface constructed
+++Si8900 Sync for autobaudrate detection
+++Si8900 readout routine
+%Wished: Implement routine with DMA to save processor time.
+
+
+9. Aug 2016: Added overvoltage protected.
++Filtering added for over voltage protection
++ADC still noisy. Need to work on that.
