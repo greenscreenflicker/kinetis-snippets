@@ -1,0 +1,16 @@
+15. Aug 2016: PWM updates
++PWM Hardware abstraction layer
++PWM Debugging interface over mcu_tracer
+
+12. Aug 2016: Added
++Si8900 manual interface constructed
+++Si8900 Sync for autobaudrate detection
+++Si8900 readout routine
+%Wished: Implement routine with DMA to save processor time.
+++Improved routine for Si8900 with DMA implemented..
+!!SI8900 is quite slow on readout. Choose alternative?
+
+
+9. Aug 2016: Added overvoltage protected.
++Filtering added for over voltage protection
++ADC still noisy. Need to work on that.
