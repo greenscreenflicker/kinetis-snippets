@@ -1,0 +1,263 @@
+/*
+ * regulation.c
+ *
+ *  Created on: Aug 22, 2016
+ *      Author: mmh
+ */
+
+#include <math.h>
+#include "mcu_tracer.h"
+#include "mhmath.h"
+
+float global_regul_d;
+uint32_t global_target_iled;
+uint32_t global_deadtime=10;
+
+#define M_PI		3.14159265358979323846
+
+extern float testfloat;
+extern float testfloat_approx,testfloat_original;
+
+const float C=100e-9;
+const float L=100e-6;
+
+float regul_calcd(float Ud, float Uout,float tc, float D){
+	float C=100e-9;
+	float L=100e-6;
+	float d;
+	float umrechnung=1e9;
+	Uout=3.78f*(1.4f+Uout);
+	//d=(sqrt(C*L)*atan(((Ud-Uout-Ud*D)*sin(tc/sqrt(C*L)))/((Ud-Uout+Ud*D)*cos(tc/sqrt(C*L))-Ud*D+Uout+Ud)))/tc;
+	//d=(sqrt(C*L)*atan(((-Ud+Uout-Ud*D)*sin(tc/sqrt(C*L)))/((-Ud+Uout-Ud*D)*cos(tc/sqrt(C*L))-Ud*D-Uout-Ud)))/umrechnung;
+	//d=(sqrt(C*L)*atan(((-Ud+Uout+Ud*D)*sin(tc/sqrt(C*L)))/((-Ud+Uout+Ud*D)*cos(tc/sqrt(C*L))+Ud*D-Uout-Ud)))/tc;
+	d=(tc*(-Ud+Uout+Ud*D))/(2*Ud*(D-1));
+	return d*umrechnung;
+}
+
+//Calculates the charge transfered
+float regul_calC(float tc, float Imax){
+	return (tc*Imax)/2;
+}
+
+float regul_estimateI(float Udc, float Uout, float tc){
+	float L=100e-6;
+	Uout=3.78f*(0.8f+Uout);
+	return ((Udc/2-Uout)*tc)/(2*L);
+}
+
+float regul_caltc(float Udc, float Uout, float Itarget){
+	float L=95e-6;
+	float I=Itarget;
+	float tc;
+	//check for minimum 50V DC Link voltage
+	if(Udc<50.0f){
+		return 0;
+	}
+
+	Uout=3.78f*(Uout);
+	tc=(2*I*L)/(Udc-2*Uout);
+	//tc=tc+1.666666667e-7;
+	if(tc>600) tc=600;
+	return tc;
+}
+
+float regul_complexcalc(float Udc, float Uout,float tc){
+	float w=1/sqrt(L*C);
+	float Ilowmax=sqrt(C/L)*(Uout+1.5f*Udc);
+	float IhighMax=sqrt(C/L)*(-Uout+1.5f*Udc);
+	float a=Ilowmax/IhighMax;
+	float sinb=sin(w*tc);
+	float cosb=cos(w*tc);
+	float tanx;
+	tanx=(a*sinb)/(1+a*cosb);
+	float x;
+	x=atan(tanx);
+	float t1=x*sqrt(L*C);
+
+	float Ilowavg=(t1*Ilowmax)/2;
+	float Itarget;
+	Itarget=0.4;
+	float Ihighperiode;
+	Ihighperiode=Itarget-Ilowavg;
+
+	//The follow section calculates the current folowing in the high periode.
+	float parameterb=0.497158878937f;
+	float parameterc=0.0374784807595f;
+
+}
+
+float regul_cal_complex_tc(float Ihigh, float Uout, float Udc){
+
+	//Ihigh=2*Ihigh; //Woher kommt dieser Faktor??? unklar!
+
+	float Ipeak=sqrt(C/L)*(-Uout+Udc*1.5f); //calculate peak current that is possible.
+	float R;
+	//R = (q/2)²+(p/3)³
+	float parameterb=0.497158878937f;
+	float parameterc=0.0374784807595f;
+	float q2=Ihigh/(2*Ipeak*parameterc);
+	float p3=-parameterb/(3*parameterc);
+
+	float Ilimit=(Ipeak*0.61);
+	if(Ihigh>Ilimit){
+		//Problem: Desired current to high
+		// __asm__ volatile ("BKPT");
+		Ihigh=Ilimit;
+	}
+
+	R=q2*q2+p3*p3*p3;
+	float y;
+	if(R<0.0f){
+		//Da R < 0, liegt der casus irreducibilis vor. Man erhält die Lösungen mit
+		//y = 2·kubikwurzel(u)·cos(w/3 + v), wobei u = sqr(-(p/3)³) und cos(w) = -q/(2u) ist,
+		//und v die Werte 0, 120° und 240° annimmt.
+		float usq=-(p3*p3*p3);
+		float u=mh_sqrt(usq);
+		//cos(w) = -q/(2u)
+		float w=fastacos(-(q2)/(u)); //can optimize that!
+		float y1,y2,y3;
+		y1=2*mh_6thrt(usq)*fastcos(w/3);
+		y2=2*mh_6thrt(usq)*fastcos(w/3+2*M_PI/3);
+		y3=2*mh_6thrt(usq)*fastcos(w/3-(2*M_PI)/3);
+		y=y3;
+		if(y<0){
+			__asm__ volatile ("NOP");
+		}
+	}else{
+		//Solution not implement. need to implement
+		//__asm__ volatile ("BKPT");
+/*
+		Da R nicht negativ ist, kann die Gleichung mit der Cardanischen Formel gelöst werden:
+
+
+		   T = sqr((q/2)²+(p/3)³) = sqr(R) = 18,52177804739699
+
+		   u = kubikwurzel(-q/2 + T) = 3,035025699310118
+
+		   v = kubikwurzel(-q/2 - T) = -2,086747843609015
+
+		   y  = u + v = 0,9482778557011029
+		    1
+			*/
+		float T=mh_sqrt(R);
+		float u=sqrt3_sign(-q2 + T);
+		float v=sqrt3_sign(-q2 - T); //we manage sign manually
+		y=u+v;
+		if(y<0){
+			__asm__ volatile ("NOP");
+		}
+	}
+	if(Ihigh>0.0f){
+		float x;
+		x=y*((2*M_PI)*sqrt(L*C));
+		if(x>0){
+			return x;
+		}else{
+			//x=(M_PI/4)*(sqrt(L*C));
+			return 0;
+			__asm__ volatile ("NOP");
+		}
+
+	}
+	return 0;
+}
+
+float regul_calc_d(float Itarget, float Uout, float Udc){
+
+
+}
+//calculates the momentary current folowing
+float regulator_calc_mom_current(float Uout, float Udc, float t){
+	float Il;
+	Il=(mh_sqrt(C/L)*(-Uout+1.5*Udc)*sin(t/(sqrt(C*L))));
+}
+/*
+void regulator_calc_falltime(float Uout, float Udc, float t, float* tfall, float* Ifall){
+	float Il;
+	Il=(mh_sqrt(C/L)*(-Uout+1.5*Udc)*sin(t/(mh_sqrt(C*L))));
+	tfall=(Il*L)/(Udc/2+Uout);
+	Ifall=Il/2*tfall;
+}*/
+
+uint8_t regul_calc_deadtime(float I, float Udc){
+	//TODO Interpolation code would be nice here!
+	float C;
+	uint8_t returnvalue;
+
+	C=2000e-12;
+	I=I*2;
+
+	returnvalue=(C*Udc*60000000.0f)/I;
+	if(returnvalue<5)returnvalue=5;
+	if(returnvalue>63)returnvalue=63;
+}
+
+
+float regul_llc(float Itarget, float Uout, float Udc){
+	float tfall;
+	float Ifall;
+	float trise;
+	float Irise=Itarget;
+	float Il;
+	int i=5;
+
+	do{
+		trise=regul_cal_complex_tc(Irise, Uout, Udc);
+		Il=(mh_sqrt(C/L)*(-Uout+0.5*Udc)*sin(trise/(mh_sqrt(C*L))));
+		tfall=(Il*L)/(Udc*1.5+Uout);
+		Ifall=Il/2;
+		Irise=(Itarget*(tfall+trise)-Ifall*tfall)/trise;
+		i=i-1;
+	}while(i>0);
+	return trise+tfall;
+}
+
+void regul_regulate(void){
+	//does the regulation
+
+	float Duty=global_pwm_ton;
+	Duty=Duty/global_pwm_tcy;
+
+	float umrechnung=(1.0f)/(60000000.0f);
+/*
+	global_regul_d=regul_calcd(global_adc_dclink,
+			global_si8900_uled,
+			(global_pwm_tcy/2)*umrechnung,
+			1-Duty);
+*/
+	testfloat_approx=regul_caltc(global_adc_dclink,
+			global_si8900_uled,
+			global_target_iled*0.001f)*60000000.0f;
+
+	/*
+	global_regul_d=regul_cal_complex_tc(
+			global_target_iled*0.001,
+			global_si8900_uled,
+			global_adc_dclink)*60000000.0f;
+*/
+
+	regul_complexcalc(global_adc_dclink,
+			global_si8900_uled,
+			global_pwm_ton*umrechnung);
+
+	testfloat_original=regul_llc(global_target_iled*0.001f*0.324f,
+			global_si8900_uled*3.78f,
+			global_adc_dclink)*60000000.0f;
+	/*
+	Uout=3.78f*(Uout);
+	Ihigh=0.324f*Ihigh;
+	*/
+	global_pwm_tp=1;
+	global_pwm_tpsc=1;
+	global_pwm_ton=testfloat_original;
+	global_pwm_tcy=2*global_pwm_ton;
+	FTM_setpwm(global_pwm_ton,global_pwm_tcy,global_pwm_tp,global_pwm_tpsc);
+	global_deadtime=regul_calc_deadtime(global_target_iled*0.001f,global_adc_dclink);
+	FTM_deadtime(global_deadtime);
+
+
+	//testfloat_approx=
+	//testfloat_original=acos(testfloat);
+	//=fastacos(testfloat);
+}
+
